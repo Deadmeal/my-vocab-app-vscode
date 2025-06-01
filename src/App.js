@@ -6,9 +6,9 @@ import {
     signOut, 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword 
-} from 'firebase/auth'; // Updated imports
+} from 'firebase/auth';
 import { getFirestore, doc, addDoc, getDocs, updateDoc, collection, query, where, Timestamp, serverTimestamp, orderBy, limit, writeBatch, deleteDoc, runTransaction, onSnapshot } from 'firebase/firestore';
-import { PlusCircle, BookOpen, BarChart3, LogOut, Brain, Trash2, Edit3, Layers, Shuffle, Printer, Sun, Moon, Type, Sparkles, Loader2, ListChecks, X, Check, Minus, Plus, UserPlus, LogIn } from 'lucide-react'; // Added UserPlus, LogIn
+import { PlusCircle, BookOpen, BarChart3, LogOut, Brain, Trash2, Edit3, Layers, Shuffle, Printer, Sun, Moon, Type, Sparkles, Loader2, ListChecks, X, Check, Minus, Plus, UserPlus, LogIn, Heart } from 'lucide-react';
 
 // --- Theme Context ---
 const ThemeContext = createContext();
@@ -16,6 +16,7 @@ const THEMES = {
     DARK: 'dark',
     LIGHT: 'light',
     MINIMALIST: 'minimalist',
+    CLAUDIA: 'claudia', // New Theme
 };
 
 const ThemeProvider = ({ children }) => {
@@ -26,12 +27,10 @@ const ThemeProvider = ({ children }) => {
 
     useEffect(() => {
         localStorage.setItem('vocabAppTheme', theme);
-        document.documentElement.classList.remove(THEMES.DARK, THEMES.LIGHT, THEMES.MINIMALIST);
+        document.documentElement.classList.remove(THEMES.DARK, THEMES.LIGHT, THEMES.MINIMALIST, THEMES.CLAUDIA, 'font-mono');
         document.documentElement.classList.add(theme);
         if (theme === THEMES.MINIMALIST) {
             document.documentElement.classList.add('font-mono'); 
-        } else {
-            document.documentElement.classList.remove('font-mono');
         }
     }, [theme]);
 
@@ -45,7 +44,9 @@ const ThemeProvider = ({ children }) => {
 const useTheme = () => useContext(ThemeContext);
 
 // --- Firebase Configuration ---
-const firebaseConfig = { // Make sure this is YOUR actual Firebase config
+// This configuration is used directly. For Netlify deployment,
+// you would typically use environment variables like process.env.REACT_APP_FIREBASE_API_KEY
+const firebaseConfig = {
   apiKey: "AIzaSyCf_c6Z4uAPkYx3cXt9XZk-3-xWN3rtvyY",
   authDomain: "tongulos.firebaseapp.com",
   projectId: "tongulos",
@@ -56,12 +57,21 @@ const firebaseConfig = { // Make sure this is YOUR actual Firebase config
 };
 
 // --- App ID ---
-const appId = 'anki-vocab-app-default'; // You can customize this if needed
+const appId = 'tongulo-app-default'; // Renamed for consistency
 
 // --- Initialize Firebase ---
-const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
+let firebaseApp;
+let auth;
+let db;
+
+try {
+    firebaseApp = initializeApp(firebaseConfig);
+    auth = getAuth(firebaseApp);
+    db = getFirestore(firebaseApp);
+} catch (error) {
+    console.error("Error initializing Firebase. Ensure your firebaseConfig is correct.", error);
+}
+
 
 // --- SRS Configuration ---
 const LEARNING_STEPS_MINUTES = [1, 10]; 
@@ -85,21 +95,21 @@ const CardStatus = {
 };
 
 // --- Auth Page Component ---
-function AuthPage({ setCurrentUser, setUserIdToUse }) {
+function AuthPage() {
     const { theme } = useTheme();
-    const [isSignUp, setIsSignUp] = useState(false); // To toggle between Sign In and Sign Up
+    const [isSignUp, setIsSignUp] = useState(true); 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
-    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
-    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-sky-400';
-    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300 text-gray-800' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400 text-black' : 'bg-slate-700 border-slate-600 text-slate-100';
-    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : 'bg-sky-600 hover:bg-sky-500 text-white';
-    const buttonLinkClass = theme === THEMES.MINIMALIST ? 'text-sky-600 hover:text-sky-700' : 'text-sky-400 hover:text-sky-300';
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-50 border border-pink-200' : 'bg-slate-800';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-700' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-500' : 'text-sky-400';
+    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300 text-gray-800' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400 text-black' : theme === THEMES.CLAUDIA ? 'bg-white border-pink-300 text-pink-700 placeholder-pink-300' : 'bg-slate-700 border-slate-600 text-slate-100';
+    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-sky-600 hover:bg-sky-500 text-white';
+    const buttonLinkClass = theme === THEMES.MINIMALIST ? 'text-sky-600 hover:text-sky-700' : theme === THEMES.CLAUDIA ? 'text-pink-500 hover:text-pink-600' :'text-sky-400 hover:text-sky-300';
 
 
     const handleAuthAction = async (e) => {
@@ -114,19 +124,15 @@ function AuthPage({ setCurrentUser, setUserIdToUse }) {
                 return;
             }
             try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                // User will be set by onAuthStateChanged in App component
-                // console.log("Signed up:", userCredential.user);
+                await createUserWithEmailAndPassword(auth, email, password);
             } catch (err) {
-                setError(err.message);
+                setError(getFriendlyErrorMessage(err));
             }
-        } else { // Sign In
+        } else { 
             try {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                // User will be set by onAuthStateChanged in App component
-                // console.log("Signed in:", userCredential.user);
+                await signInWithEmailAndPassword(auth, email, password);
             } catch (err) {
-                setError(err.message);
+                setError(getFriendlyErrorMessage(err));
             }
         }
         setLoading(false);
@@ -134,12 +140,13 @@ function AuthPage({ setCurrentUser, setUserIdToUse }) {
     
     const getFriendlyErrorMessage = (firebaseError) => {
         if (!firebaseError) return '';
-        switch (firebaseError.code || firebaseError) { // Check error.code if available
+        switch (firebaseError.code || firebaseError) { 
             case 'auth/invalid-email': return 'Please enter a valid email address.';
             case 'auth/user-not-found': return 'No account found with this email. Please sign up.';
             case 'auth/wrong-password': return 'Incorrect password. Please try again.';
             case 'auth/email-already-in-use': return 'This email is already registered. Please sign in or use a different email.';
             case 'auth/weak-password': return 'Password should be at least 6 characters long.';
+            case 'auth/operation-not-allowed': return 'Email/password sign-in is not enabled for this project.';
             default: return firebaseError.message || 'An unexpected error occurred. Please try again.';
         }
     };
@@ -154,19 +161,19 @@ function AuthPage({ setCurrentUser, setUserIdToUse }) {
                 <form onSubmit={handleAuthAction} className="space-y-6">
                     <div>
                         <label htmlFor="email" className={`block text-sm font-medium ${textClass} mb-1`}>Email Address</label>
-                        <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 focus:ring-sky-500`} />
+                        <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'}`} />
                     </div>
                     <div>
                         <label htmlFor="password" className={`block text-sm font-medium ${textClass} mb-1`}>Password</label>
-                        <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} required className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 focus:ring-sky-500`} />
+                        <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} required className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'}`} />
                     </div>
                     {isSignUp && (
                         <div>
                             <label htmlFor="confirmPassword" className={`block text-sm font-medium ${textClass} mb-1`}>Confirm Password</label>
-                            <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 focus:ring-sky-500`} />
+                            <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'}`} />
                         </div>
                     )}
-                    {error && <p className="text-sm text-red-500 text-center">{getFriendlyErrorMessage(error)}</p>}
+                    {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                     <button type="submit" disabled={loading} className={`w-full flex items-center justify-center p-3 ${buttonPrimaryClass} font-semibold rounded-lg shadow-md disabled:opacity-70`}>
                         {loading ? <Loader2 className="animate-spin h-5 w-5 mr-2"/> : (isSignUp ? <UserPlus size={20} className="mr-2"/> : <LogIn size={20} className="mr-2"/>)}
                         {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
@@ -189,7 +196,7 @@ function App() {
     const { theme, setTheme } = useTheme();
     const [user, setUser] = useState(null);
     const [userId, setUserId] = useState(null);
-    const [isAuthReady, setIsAuthReady] = useState(false); // Tracks if onAuthStateChanged has run at least once
+    const [isAuthReady, setIsAuthReady] = useState(false); 
     const [activeTab, setActiveTab] = useState('decks'); 
     const [decks, setDecks] = useState([]);
     const [selectedDeckId, setSelectedDeckId] = useState(null);
@@ -231,13 +238,11 @@ function App() {
             if (currentUser) {
                 setUser(currentUser);
                 setUserId(currentUser.uid);
-                console.log("User signed in:", currentUser.uid, currentUser.email);
             } else {
                 setUser(null);
                 setUserId(null);
-                console.log("User signed out or not logged in.");
             }
-            setIsAuthReady(true); // Firebase has checked auth state
+            setIsAuthReady(true); 
         });
         return () => unsubscribe();
     }, []);
@@ -245,8 +250,6 @@ function App() {
     const handleSignOut = async () => {
         try {
             await signOut(auth);
-            // User state will be cleared by onAuthStateChanged
-            // Reset app state that depends on user
             setDecks([]);
             setSelectedDeckId(null);
             setPracticeModeActive(false);
@@ -259,16 +262,18 @@ function App() {
     
     const currentDeckName = decks.find(d => d.id === (managingCardsDeckId || selectedDeckId))?.name || "No Deck Selected";
 
-    const bgClass = theme === THEMES.LIGHT ? 'bg-gray-100' : theme === THEMES.MINIMALIST ? 'bg-white' : 'bg-slate-900';
-    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
-    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-sky-400';
-    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-500' : theme === THEMES.MINIMALIST ? 'text-gray-700' : 'text-slate-400';
-    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
-    const navBgClass = theme === THEMES.LIGHT ? 'bg-gray-200' : theme === THEMES.MINIMALIST ? 'bg-gray-100 border border-gray-300' : 'bg-slate-800';
-    const buttonHoverBgClass = theme === THEMES.MINIMALIST ? 'hover:bg-gray-200' : 'hover:bg-sky-700';
+    const bgClass = theme === THEMES.LIGHT ? 'bg-gray-100' : theme === THEMES.MINIMALIST ? 'bg-white' : theme === THEMES.CLAUDIA ? 'bg-pink-50' : 'bg-slate-900';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-800' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-600' : 'text-sky-400';
+    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-500' : theme === THEMES.MINIMALIST ? 'text-gray-700' : theme === THEMES.CLAUDIA ? 'text-pink-500' : 'text-slate-400';
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-white border border-pink-200' : 'bg-slate-800';
+    const navBgClass = theme === THEMES.LIGHT ? 'bg-gray-200' : theme === THEMES.MINIMALIST ? 'bg-gray-100 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-100 border border-pink-200' : 'bg-slate-800';
+    const buttonHoverBgClass = theme === THEMES.MINIMALIST ? 'hover:bg-gray-200' : theme === THEMES.CLAUDIA ? 'hover:bg-pink-200' : 'hover:bg-sky-700';
+    const themeButtonActiveClass = theme === THEMES.CLAUDIA ? 'bg-pink-400' : 'bg-sky-500';
+    const themeButtonTextClass = theme === THEMES.CLAUDIA ? 'text-pink-700 hover:bg-pink-200' : 'text-slate-300 hover:bg-slate-700';
 
 
-    if (!isAuthReady) { // Show a general loading screen while Firebase checks auth state
+    if (!isAuthReady) { 
         return (
             <div className={`flex items-center justify-center min-h-screen ${bgClass} ${textClass}`}>
                 <Brain className={`animate-pulse w-16 h-16 ${headerTextClass}`} />
@@ -277,9 +282,9 @@ function App() {
         );
     }
     
-    if (!user) { // If auth is ready and there's no user, show AuthPage
+    if (!user) { 
          return (
-            <div className={`${bgClass} ${textClass}`}> {/* Apply theme to full auth page background */}
+            <div className={`${bgClass} ${textClass}`}> 
                 <AuthPage />
             </div>
          );
@@ -316,13 +321,14 @@ function App() {
                 <div className="flex justify-between items-center">
                      <div className="flex items-center">
                         <Layers className={`w-10 h-10 ${headerTextClass} mr-3`} />
-                        <h1 className={`text-3xl font-bold ${headerTextClass}`}>VocabLearner SRS</h1>
+                        <h1 className={`text-3xl font-bold ${headerTextClass}`}>Tongulo</h1>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <div className={`p-1 rounded-md ${theme === THEMES.MINIMALIST ? 'border border-gray-400' : cardBgClass}`}>
-                            <button onClick={() => setTheme(THEMES.LIGHT)} title="Light Mode" className={`p-1.5 rounded ${theme === THEMES.LIGHT ? (theme === THEMES.MINIMALIST ? 'bg-gray-300' : 'bg-sky-500') : ''} ${theme === THEMES.MINIMALIST ? 'text-black hover:bg-gray-200' : 'text-slate-300 hover:bg-slate-700'}`}> <Sun size={18}/> </button>
-                            <button onClick={() => setTheme(THEMES.DARK)} title="Dark Mode" className={`p-1.5 rounded ${theme === THEMES.DARK ? 'bg-sky-500' : ''} ${theme === THEMES.MINIMALIST ? 'text-black hover:bg-gray-200' : 'text-slate-300 hover:bg-slate-700'}`}> <Moon size={18}/> </button>
-                            <button onClick={() => setTheme(THEMES.MINIMALIST)} title="Minimalist Mode" className={`p-1.5 rounded ${theme === THEMES.MINIMALIST ? 'bg-gray-300' : ''} ${theme === THEMES.MINIMALIST ? 'text-black hover:bg-gray-200' : 'text-slate-300 hover:bg-slate-700'}`}> <Type size={18}/> </button>
+                        <div className={`p-1 rounded-md ${theme === THEMES.MINIMALIST ? 'border border-gray-400' : theme === THEMES.CLAUDIA ? 'border border-pink-300' : cardBgClass}`}>
+                            <button onClick={() => setTheme(THEMES.LIGHT)} title="Light Mode" className={`p-1.5 rounded ${theme === THEMES.LIGHT ? (theme === THEMES.MINIMALIST ? 'bg-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-300' : 'bg-sky-500') : ''} ${theme === THEMES.MINIMALIST ? 'text-black hover:bg-gray-200' : theme === THEMES.CLAUDIA ? 'text-pink-700 hover:bg-pink-200' : 'text-slate-300 hover:bg-slate-700'}`}> <Sun size={18}/> </button>
+                            <button onClick={() => setTheme(THEMES.DARK)} title="Dark Mode" className={`p-1.5 rounded ${theme === THEMES.DARK ? themeButtonActiveClass : ''} ${theme === THEMES.MINIMALIST ? 'text-black hover:bg-gray-200' : theme === THEMES.CLAUDIA ? 'text-pink-700 hover:bg-pink-200' : 'text-slate-300 hover:bg-slate-700'}`}> <Moon size={18}/> </button>
+                            <button onClick={() => setTheme(THEMES.MINIMALIST)} title="Minimalist Mode" className={`p-1.5 rounded ${theme === THEMES.MINIMALIST ? 'bg-gray-300' : ''} ${theme === THEMES.MINIMALIST ? 'text-black hover:bg-gray-200' : theme === THEMES.CLAUDIA ? 'text-pink-700 hover:bg-pink-200' : 'text-slate-300 hover:bg-slate-700'}`}> <Type size={18}/> </button>
+                            <button onClick={() => setTheme(THEMES.CLAUDIA)} title="Claudia Mode" className={`p-1.5 rounded ${theme === THEMES.CLAUDIA ? 'bg-pink-400' : ''} ${theme === THEMES.MINIMALIST ? 'text-black hover:bg-gray-200' : theme === THEMES.CLAUDIA ? 'text-pink-700 hover:bg-pink-200' : 'text-slate-300 hover:bg-slate-700'}`}> <Heart size={18}/> </button>
                         </div>
                         {user && user.email && <span className={`text-xs ${subTextClass} hidden sm:block`}>{user.email}</span>}
                          <button onClick={handleSignOut} title="Sign Out" className={`p-2 rounded-md ${buttonHoverBgClass} transition-colors`}>
@@ -332,13 +338,13 @@ function App() {
                 </div>
                 {user && user.email && <p className={`text-sm ${subTextClass} sm:hidden mt-1`}>{user.email}</p>}
                 {selectedDeckId && activeTab !== 'decks' && !practiceModeActive && !managingCardsDeckId && (
-                     <p className={`text-sm ${theme === THEMES.MINIMALIST ? 'text-sky-700' : 'text-sky-300'} mt-1`}>Current Deck: {currentDeckName}</p>
+                     <p className={`text-sm ${theme === THEMES.MINIMALIST ? 'text-sky-700' : theme === THEMES.CLAUDIA ? 'text-pink-500' : 'text-sky-300'} mt-1`}>Current Deck: {currentDeckName}</p>
                 )}
                  {practiceModeActive && selectedDeckId && (
-                     <p className={`text-sm ${theme === THEMES.MINIMALIST ? 'text-amber-700' : 'text-amber-400'} mt-1`}>Practice Mode: {currentDeckName}</p>
+                     <p className={`text-sm ${theme === THEMES.MINIMALIST ? 'text-amber-700' : theme === THEMES.CLAUDIA ? 'text-purple-500' : 'text-amber-400'} mt-1`}>Practice Mode: {currentDeckName}</p>
                 )}
                 {managingCardsDeckId && (
-                    <p className={`text-sm ${theme === THEMES.MINIMALIST ? 'text-indigo-700' : 'text-indigo-400'} mt-1`}>Managing Cards for: {currentDeckName}</p>
+                    <p className={`text-sm ${theme === THEMES.MINIMALIST ? 'text-indigo-700' : theme === THEMES.CLAUDIA ? 'text-indigo-500' : 'text-indigo-400'} mt-1`}>Managing Cards for: {currentDeckName}</p>
                 )}
             </header>
 
@@ -348,14 +354,15 @@ function App() {
                         <button
                             key={tab}
                             onClick={() => navigateToTab(tab, (tab !== 'decks' && selectedDeckId) ? selectedDeckId : null)}
-                            disabled={(tab === 'learn' || tab === 'add' || tab === 'stats') && !selectedDeckId && decks.length > 0 && !practiceModeActive && !managingCardsDeckId}
+                            disabled={(tab === 'learn' || tab === 'add' || tab === 'stats') && !selectedDeckId && !managingCardsDeckId && decks.length === 0 && !isLoadingDecks} // Allow add even if no deck selected
                             className={`flex-1 py-2 px-2 sm:px-4 rounded-md text-xs sm:text-base font-medium transition-all duration-200 ease-in-out
                                 ${activeTab === tab && !practiceModeActive && !managingCardsDeckId ? 
-                                    (theme === THEMES.MINIMALIST ? 'bg-sky-300 text-black shadow-lg' : 'bg-sky-600 text-white shadow-lg') : 
-                                    (theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : `bg-slate-700 ${buttonHoverBgClass} text-slate-300 hover:text-white`)}
-                                ${((tab === 'learn' || tab === 'add' || tab === 'stats') && !selectedDeckId && decks.length > 0 && !practiceModeActive && !managingCardsDeckId) ? 'opacity-50 cursor-not-allowed' : ''}
-                                ${practiceModeActive && activeTab === 'practice' && tab === 'learn' ? (theme === THEMES.MINIMALIST ? 'bg-amber-300 text-black shadow-lg' : 'bg-amber-600 text-white shadow-lg') : ''} 
-                                ${managingCardsDeckId && activeTab === 'manage_cards' && tab === 'decks' ? (theme === THEMES.MINIMALIST ? 'bg-indigo-300 text-black shadow-lg' : 'bg-indigo-600 text-white shadow-lg') : ''}
+                                    (theme === THEMES.MINIMALIST ? 'bg-sky-300 text-black shadow-lg' : theme === THEMES.CLAUDIA ? 'bg-pink-400 text-white shadow-lg' : 'bg-sky-600 text-white shadow-lg') : 
+                                    (theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-200 hover:bg-pink-300 text-pink-800' : `bg-slate-700 ${buttonHoverBgClass} text-slate-300 hover:text-white`)}
+                                ${((tab === 'learn' || tab === 'stats') && !selectedDeckId && decks.length > 0 && !practiceModeActive && !managingCardsDeckId) ? 'opacity-50 cursor-not-allowed' : ''}
+                                ${(tab === 'add' && decks.length === 0 && !isLoadingDecks && !practiceModeActive && !managingCardsDeckId) ? 'opacity-50 cursor-not-allowed' : ''}
+                                ${practiceModeActive && activeTab === 'practice' && tab === 'learn' ? (theme === THEMES.MINIMALIST ? 'bg-amber-300 text-black shadow-lg' : theme === THEMES.CLAUDIA ? 'bg-purple-400 text-white shadow-lg' : 'bg-amber-600 text-white shadow-lg') : ''} 
+                                ${managingCardsDeckId && activeTab === 'manage_cards' && tab === 'decks' ? (theme === THEMES.MINIMALIST ? 'bg-indigo-300 text-black shadow-lg' : theme === THEMES.CLAUDIA ? 'bg-indigo-400 text-white shadow-lg' : 'bg-indigo-600 text-white shadow-lg') : ''}
                             `}
                         >
                             {tab === 'decks' && <Layers className="inline mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />}
@@ -366,34 +373,33 @@ function App() {
                         </button>
                     ))}
                 </div>
-                 {(!selectedDeckId && decks.length > 0 && (activeTab === 'learn' || activeTab === 'add' || activeTab === 'stats') && !practiceModeActive && !managingCardsDeckId) && (
-                    <p className={`text-center ${theme === THEMES.MINIMALIST ? 'text-amber-700' : 'text-amber-400'} text-sm mt-2`}>Please select a deck from the 'Decks' tab to proceed.</p>
+                 {(!selectedDeckId && decks.length > 0 && (activeTab === 'learn' || activeTab === 'stats') && !practiceModeActive && !managingCardsDeckId) && (
+                    <p className={`text-center ${theme === THEMES.MINIMALIST ? 'text-amber-700' : theme === THEMES.CLAUDIA ? 'text-purple-600' : 'text-amber-400'} text-sm mt-2`}>Please select a deck from the 'Decks' tab to proceed.</p>
                 )}
             </nav>
 
             <main className="w-full max-w-3xl">
-                {isAuthReady && userId && ( // Ensure userId is present before rendering main content
+                {isAuthReady && userId && ( 
                     <>
                         {activeTab === 'decks' && !practiceModeActive && !managingCardsDeckId && <DecksManager userId={userId} decks={decks} setSelectedDeckId={setSelectedDeckId} navigateToTab={navigateToTab} startPracticeMode={startPracticeMode} startManagingCards={startManagingCards} isLoadingDecks={isLoadingDecks} />}
-                        {activeTab === 'add' && selectedDeckId && !practiceModeActive && !managingCardsDeckId && <AddCard userId={userId} selectedDeckId={selectedDeckId} decks={decks} setActiveTab={setActiveTab} setSelectedDeckId={setSelectedDeckId} isLoadingDecks={isLoadingDecks} />}
+                        {activeTab === 'add' && !practiceModeActive && !managingCardsDeckId && <AddCard userId={userId} selectedDeckId={selectedDeckId} decks={decks} setActiveTab={setActiveTab} setSelectedDeckId={setSelectedDeckId} isLoadingDecks={isLoadingDecks} />}
                         {activeTab === 'learn' && selectedDeckId && !practiceModeActive && !managingCardsDeckId && <Learner userId={userId} selectedDeckId={selectedDeckId} />}
                         {activeTab === 'stats' && selectedDeckId && !practiceModeActive && !managingCardsDeckId && <Stats userId={userId} selectedDeckId={selectedDeckId} />}
                         {practiceModeActive && selectedDeckId && activeTab === 'practice' && <PracticeReviewer userId={userId} selectedDeckId={selectedDeckId} deckName={currentDeckName} exitPracticeMode={() => { setPracticeModeActive(false); setActiveTab('decks'); }} />}
                         {managingCardsDeckId && activeTab === 'manage_cards' && <ManageCardsView userId={userId} deckId={managingCardsDeckId} deckName={currentDeckName} navigateToTab={navigateToTab} exitManageView={() => { setManagingCardsDeckId(null); setActiveTab('decks');}} />}
 
 
-                        {(activeTab === 'add' || activeTab === 'learn' || activeTab === 'stats') && !selectedDeckId && decks.length === 0 && !isLoadingDecks && !practiceModeActive && !managingCardsDeckId && (
+                        {(activeTab === 'learn' || activeTab === 'stats') && !selectedDeckId && decks.length === 0 && !isLoadingDecks && !practiceModeActive && !managingCardsDeckId && (
                              <div className={`text-center p-8 ${cardBgClass} rounded-lg shadow-xl`}>
-                                <p className={`text-xl ${theme === THEMES.MINIMALIST ? 'text-amber-700' : 'text-amber-400'}`}>No decks found.</p>
-                                <button onClick={() => setActiveTab('decks')} className={`mt-4 px-4 py-2 ${theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : 'bg-sky-600 hover:bg-sky-500 text-white'} rounded-lg`}>Go to Decks to create one</button>
+                                <p className={`text-xl ${theme === THEMES.MINIMALIST ? 'text-amber-700' : theme === THEMES.CLAUDIA ? 'text-purple-600' : 'text-amber-400'}`}>No decks found.</p>
+                                <button onClick={() => setActiveTab('decks')} className={`mt-4 px-4 py-2 ${theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-sky-600 hover:bg-sky-500 text-white'} rounded-lg`}>Go to Decks to create one</button>
                             </div>
                         )}
                     </>
                 )}
             </main>
             <footer className={`mt-12 text-center text-xs ${subTextClass}`}>
-                <p>&copy; {new Date().getFullYear()} VocabLearner SRS. Inspired by Anki.</p>
-                <p>App ID: {appId}</p>
+                <p>&copy; {new Date().getFullYear()} Tongulo Learner</p>
             </footer>
         </div>
     );
@@ -412,18 +418,18 @@ function DecksManager({ userId, decks, setSelectedDeckId, navigateToTab, startPr
     const [showExportMessage, setShowExportMessage] = useState('');
     const [showGenerateDeckModal, setShowGenerateDeckModal] = useState(false);
 
-    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
-    const itemBgClass = theme === THEMES.LIGHT ? 'bg-gray-50' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : 'bg-slate-700';
-    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
-    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-sky-400';
-    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-500' : theme === THEMES.MINIMALIST ? 'text-gray-700' : 'text-slate-400';
-    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400' : 'bg-slate-700 border-slate-600';
-    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : 'bg-sky-600 hover:bg-sky-500 text-white';
-    const buttonSecondaryClass = theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : 'bg-slate-600 hover:bg-slate-500 text-white';
-    const buttonDangerClass = theme === THEMES.MINIMALIST ? 'bg-red-200 hover:bg-red-300 text-black' : 'bg-red-600 hover:bg-red-500 text-white';
-    const buttonWarningClass = theme === THEMES.MINIMALIST ? 'bg-amber-200 hover:bg-amber-300 text-black' : 'bg-amber-500 hover:bg-amber-400 text-white';
-    const buttonTealClass = theme === THEMES.MINIMALIST ? 'bg-teal-200 hover:bg-teal-300 text-black' : 'bg-teal-500 hover:bg-teal-400 text-white';
-    const geminiButtonClass = theme === THEMES.MINIMALIST ? 'bg-purple-200 hover:bg-purple-300 text-black' : 'bg-purple-600 hover:bg-purple-500 text-white';
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-white border border-pink-200' : 'bg-slate-800';
+    const itemBgClass = theme === THEMES.LIGHT ? 'bg-gray-50' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : theme === THEMES.CLAUDIA ? 'bg-pink-100 border-pink-200' : 'bg-slate-700';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-800' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-600' : 'text-sky-400';
+    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-500' : theme === THEMES.MINIMALIST ? 'text-gray-700' : theme === THEMES.CLAUDIA ? 'text-pink-500' : 'text-slate-400';
+    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400' : theme === THEMES.CLAUDIA ? 'bg-white border-pink-300 text-pink-700' : 'bg-slate-700 border-slate-600';
+    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-sky-600 hover:bg-sky-500 text-white';
+    const buttonSecondaryClass = theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-200 hover:bg-pink-300 text-pink-800' : 'bg-slate-600 hover:bg-slate-500 text-white';
+    const buttonDangerClass = theme === THEMES.MINIMALIST ? 'bg-red-200 hover:bg-red-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-red-400 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white';
+    const buttonWarningClass = theme === THEMES.MINIMALIST ? 'bg-amber-200 hover:bg-amber-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-yellow-400 hover:bg-yellow-500 text-gray-800' : 'bg-amber-500 hover:bg-amber-400 text-white';
+    const buttonTealClass = theme === THEMES.MINIMALIST ? 'bg-teal-200 hover:bg-teal-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-green-400 hover:bg-green-500 text-white' : 'bg-teal-500 hover:bg-teal-400 text-white';
+    const geminiButtonClass = theme === THEMES.MINIMALIST ? 'bg-purple-200 hover:bg-purple-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-purple-400 hover:bg-purple-500 text-white' : 'bg-purple-600 hover:bg-purple-500 text-white';
 
 
     const handleDeckNameClick = (deck) => {
@@ -670,7 +676,7 @@ function DecksManager({ userId, decks, setSelectedDeckId, navigateToTab, startPr
                 </div>
             </div>
 
-            {showExportMessage && <p className={`text-center ${theme === THEMES.MINIMALIST ? 'text-amber-700' : 'text-amber-400'} my-2`}>{showExportMessage}</p>}
+            {showExportMessage && <p className={`text-center ${theme === THEMES.MINIMALIST ? 'text-amber-700' : theme === THEMES.CLAUDIA ? 'text-purple-600' : 'text-amber-400'} my-2`}>{showExportMessage}</p>}
 
             {decks.length === 0 && !isLoadingDecks && (
                 <p className={`text-center ${subTextClass} py-8`}>No decks created yet. Click "Create Deck" or "Generate Deck" to get started!</p>
@@ -686,7 +692,7 @@ function DecksManager({ userId, decks, setSelectedDeckId, navigateToTab, startPr
                                 onChange={handleDeckNameChange}
                                 onBlur={() => handleDeckNameBlur(deck.id)}
                                 onKeyDown={(e) => handleDeckNameKeyDown(e, deck.id)}
-                                className={`text-lg ${inputBgClass} ${textClass} font-medium p-1 border rounded-md w-full sm:w-auto focus:ring-2 focus:ring-sky-500`}
+                                className={`text-lg ${inputBgClass} ${textClass} font-medium p-1 border rounded-md w-full sm:w-auto focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'}`}
                                 autoFocus
                                 maxLength={20}
                             />
@@ -701,7 +707,7 @@ function DecksManager({ userId, decks, setSelectedDeckId, navigateToTab, startPr
                         <div className="flex gap-1 sm:gap-2 flex-wrap justify-start sm:justify-center mt-2 sm:mt-0"> 
                             <button onClick={() => { setSelectedDeckId(deck.id); navigateToTab('learn', deck.id); }} className={`px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm ${buttonPrimaryClass} rounded-md flex items-center`}><BookOpen size={16} className="mr-1"/>Learn</button>
                             <button onClick={() => startPracticeMode(deck.id)} className={`px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm ${buttonWarningClass} rounded-md flex items-center`}><Shuffle size={16} className="mr-1"/>Practice</button>
-                            <button onClick={() => startManagingCards(deck.id)} className={`px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm ${theme === THEMES.MINIMALIST ? 'bg-indigo-200 hover:bg-indigo-300 text-black' : 'bg-indigo-500 hover:bg-indigo-400 text-white'} rounded-md flex items-center`}><ListChecks size={16} className="mr-1"/>Manage Cards</button>
+                            <button onClick={() => startManagingCards(deck.id)} className={`px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm ${theme === THEMES.MINIMALIST ? 'bg-indigo-200 hover:bg-indigo-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-purple-300 hover:bg-purple-400 text-white' : 'bg-indigo-500 hover:bg-indigo-400 text-white'} rounded-md flex items-center`}><ListChecks size={16} className="mr-1"/>Manage Cards</button>
                             <button onClick={() => handleExportDeck(deck.id, deck.name)} className={`px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm ${buttonTealClass} rounded-md flex items-center`}><Printer size={16} className="mr-1"/>Export</button>
                             <button onClick={() => setShowDeleteConfirm(deck.id)} className={`px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm ${buttonDangerClass} rounded-md flex items-center`}><Trash2 size={16} className="mr-1"/>Delete</button>
                         </div>
@@ -719,7 +725,7 @@ function DecksManager({ userId, decks, setSelectedDeckId, navigateToTab, startPr
                                 value={deckName} 
                                 onChange={(e) => setDeckName(e.target.value.slice(0, 20))} 
                                 placeholder="Deck Name (max 20 chars)"
-                                className={`w-full p-3 ${inputBgClass} ${textClass} rounded-lg focus:ring-2 focus:ring-sky-500 mb-4`}
+                                className={`w-full p-3 ${inputBgClass} ${textClass} rounded-lg focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'} mb-4`}
                                 autoFocus
                                 maxLength={20}
                             />
@@ -736,7 +742,7 @@ function DecksManager({ userId, decks, setSelectedDeckId, navigateToTab, startPr
             {showDeleteConfirm && (
                  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
                     <div className={`${cardBgClass} p-6 rounded-lg shadow-xl w-full max-w-md`}>
-                        <h3 className={`text-xl font-semibold mb-2 ${theme === THEMES.MINIMALIST ? 'text-red-700' : 'text-red-400'}`}>Confirm Deletion</h3>
+                        <h3 className={`text-xl font-semibold mb-2 ${theme === THEMES.MINIMALIST ? 'text-red-700' :  theme === THEMES.CLAUDIA ? 'text-red-500' : 'text-red-400'}`}>Confirm Deletion</h3>
                         <p className={`${textClass} mb-4`}>Are you sure you want to delete the deck "<strong>{decks.find(d=>d.id === showDeleteConfirm)?.name}</strong>"? This will also delete all cards within this deck. This action cannot be undone.</p>
                         <div className="flex justify-end space-x-3">
                             <button onClick={() => setShowDeleteConfirm(null)} className={`px-4 py-2 ${buttonSecondaryClass} rounded-lg`}>Cancel</button>
@@ -761,12 +767,12 @@ function GenerateDeckModal({ userId, onClose }) {
     const [generationMessage, setGenerationMessage] = useState('');
     const [generatedCards, setGeneratedCards] = useState([]); 
 
-    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
-    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
-    const headerTextClass = theme === THEMES.LIGHT ? 'text-purple-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-purple-400';
-    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400' : 'bg-slate-700 border-slate-600';
-    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-purple-200 hover:bg-purple-300 text-black' : 'bg-purple-600 hover:bg-purple-500 text-white';
-    const buttonSecondaryClass = theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : 'bg-slate-600 hover:bg-slate-500 text-white';
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-50 border-pink-200' : 'bg-slate-800';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-700' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-purple-600' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-purple-500' : 'text-purple-400';
+    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400' : theme === THEMES.CLAUDIA ? 'bg-white border-pink-300 text-pink-700 placeholder-pink-300' : 'bg-slate-700 border-slate-600';
+    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-purple-200 hover:bg-purple-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-purple-400 hover:bg-purple-500 text-white' : 'bg-purple-600 hover:bg-purple-500 text-white';
+    const buttonSecondaryClass = theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-200 hover:bg-pink-300 text-pink-800' : 'bg-slate-600 hover:bg-slate-500 text-white';
 
     const handleGenerateCardsFromGemini = async () => {
         if (!userInput.trim()) {
@@ -900,7 +906,7 @@ Provide the output as a JSON array of objects, where each object has a "front" a
             <div className={`${cardBgClass} p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col`}>
                 <div className="flex justify-between items-center mb-4">
                     <h3 className={`text-xl font-semibold ${headerTextClass}`}>✨ Generate New Deck with AI</h3>
-                    <button onClick={onClose} className={`p-1 rounded-full hover:bg-opacity-20 ${theme === THEMES.MINIMALIST ? 'hover:bg-gray-300' : 'hover:bg-slate-600'}`}><X size={20}/></button>
+                    <button onClick={onClose} className={`p-1 rounded-full hover:bg-opacity-20 ${theme === THEMES.MINIMALIST ? 'hover:bg-gray-300' : theme === THEMES.CLAUDIA ? 'hover:bg-pink-200' : 'hover:bg-slate-600'}`}><X size={20}/></button>
                 </div>
                 
                 <div className="flex-grow overflow-y-auto pr-2 space-y-4">
@@ -912,7 +918,7 @@ Provide the output as a JSON array of objects, where each object has a "front" a
                             onChange={(e) => setUserInput(e.target.value)}
                             placeholder="e.g., 'Basic Spanish Greetings', or paste your notes about photosynthesis here..."
                             rows="5"
-                            className={`w-full p-3 ${inputBgClass} ${textClass} rounded-lg focus:ring-2 focus:ring-purple-500`}
+                            className={`w-full p-3 ${inputBgClass} ${textClass} rounded-lg focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-purple-400' : 'focus:ring-purple-500'}`}
                             disabled={isGenerating || generatedCards.length > 0}
                         />
                     </div>
@@ -928,10 +934,10 @@ Provide the output as a JSON array of objects, where each object has a "front" a
                         </button>
                     )}
 
-                    {generationMessage && <p className={`text-sm my-2 p-2 rounded ${generationMessage.includes('Failed') || generationMessage.includes('Error') ? (theme === THEMES.MINIMALIST ? 'bg-red-100 text-red-700' : 'bg-red-700 text-red-100') : (theme === THEMES.MINIMALIST ? 'bg-green-100 text-green-700' : 'bg-green-700 text-green-100')}`}>{generationMessage}</p>}
+                    {generationMessage && <p className={`text-sm my-2 p-2 rounded ${generationMessage.includes('Failed') || generationMessage.includes('Error') ? (theme === THEMES.MINIMALIST ? 'bg-red-100 text-red-700' : theme === THEMES.CLAUDIA ? 'bg-red-100 text-red-700' : 'bg-red-700 text-red-100') : (theme === THEMES.MINIMALIST ? 'bg-green-100 text-green-700' : theme === THEMES.CLAUDIA ? 'bg-green-100 text-green-700' : 'bg-green-700 text-green-100')}`}>{generationMessage}</p>}
                 
                     {generatedCards.length > 0 && (
-                        <form onSubmit={handleSaveGeneratedDeck} className={`space-y-3 mt-4 border-t pt-4 ${theme === THEMES.MINIMALIST ? 'border-gray-300' : 'border-slate-700'}`}>
+                        <form onSubmit={handleSaveGeneratedDeck} className={`space-y-3 mt-4 border-t pt-4 ${theme === THEMES.MINIMALIST ? 'border-gray-300' : theme === THEMES.CLAUDIA ? 'border-pink-200' : 'border-slate-700'}`}>
                              <div>
                                 <label htmlFor="newDeckName" className={`block text-sm font-medium ${textClass} mb-1`}>Name for your New Deck (max 20 chars):</label>
                                 <input
@@ -940,16 +946,16 @@ Provide the output as a JSON array of objects, where each object has a "front" a
                                     value={newDeckName}
                                     onChange={(e) => setNewDeckName(e.target.value.slice(0, 20))}
                                     placeholder="e.g., My AI Spanish Deck"
-                                    className={`w-full p-3 ${inputBgClass} ${textClass} rounded-lg focus:ring-2 focus:ring-purple-500`}
+                                    className={`w-full p-3 ${inputBgClass} ${textClass} rounded-lg focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-purple-400' : 'focus:ring-purple-500'}`}
                                     required
                                     disabled={isGenerating}
                                     maxLength={20}
                                 />
                             </div>
                             <p className={`${textClass} text-sm`}>Review generated cards ({generatedCards.length}):</p>
-                            <div className={`max-h-48 overflow-y-auto border rounded p-2 ${theme === THEMES.MINIMALIST ? 'border-gray-300 bg-white' : 'border-slate-600 bg-slate-700'}`}>
+                            <div className={`max-h-48 overflow-y-auto border rounded p-2 ${theme === THEMES.MINIMALIST ? 'border-gray-300 bg-white' : theme === THEMES.CLAUDIA ? 'border-pink-200 bg-white' : 'border-slate-600 bg-slate-700'}`}>
                                 {generatedCards.map((card, index) => (
-                                    <div key={index} className={`p-1.5 text-xs ${theme === THEMES.MINIMALIST ? 'border-b border-gray-200' : 'border-b border-slate-600'} last:border-b-0`}>
+                                    <div key={index} className={`p-1.5 text-xs ${theme === THEMES.MINIMALIST ? 'border-b border-gray-200' : theme === THEMES.CLAUDIA ? 'border-b border-pink-100' : 'border-b border-slate-600'} last:border-b-0`}>
                                         <strong>Front:</strong> {card.front} <br/>
                                         <strong>Back:</strong> {card.back}
                                     </div>
@@ -966,7 +972,7 @@ Provide the output as a JSON array of objects, where each object has a "front" a
                         </form>
                     )}
                 </div>
-                <div className={`mt-4 pt-4 border-t ${theme === THEMES.MINIMALIST ? 'border-gray-300' : 'border-slate-700'}`}>
+                <div className={`mt-4 pt-4 border-t ${theme === THEMES.MINIMALIST ? 'border-gray-300' : theme === THEMES.CLAUDIA ? 'border-pink-200' : 'border-slate-700'}`}>
                     <button onClick={onClose} className={`w-full px-4 py-2 ${buttonSecondaryClass} rounded-lg`}>Close</button>
                 </div>
 
@@ -989,14 +995,14 @@ function ManageCardsView({ userId, deckId, deckName, exitManageView, navigateToT
 
     const cardsCollectionPath = `artifacts/${appId}/users/${userId}/vocabCards`;
 
-    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
-    const itemBgClass = theme === THEMES.LIGHT ? 'bg-gray-50' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : 'bg-slate-700';
-    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
-    const headerTextClass = theme === THEMES.LIGHT ? 'text-indigo-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-indigo-400';
-    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-600' : theme === THEMES.MINIMALIST ? 'text-gray-700' : 'text-slate-300';
-    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400' : 'bg-slate-700 border-slate-600';
-    const buttonSecondaryClass = theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : 'bg-slate-600 hover:bg-slate-500 text-white';
-    const addCardButtonClass = theme === THEMES.MINIMALIST ? 'bg-green-200 hover:bg-green-300 text-black' : 'bg-green-600 hover:bg-green-500 text-white';
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-50 border-pink-200' : 'bg-slate-800';
+    const itemBgClass = theme === THEMES.LIGHT ? 'bg-gray-50' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : theme === THEMES.CLAUDIA ? 'bg-white border-pink-200' : 'bg-slate-700';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-800' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-indigo-600' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-indigo-500' : 'text-indigo-400';
+    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-600' : theme === THEMES.MINIMALIST ? 'text-gray-700' : theme === THEMES.CLAUDIA ? 'text-pink-600' : 'text-slate-300';
+    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400' : theme === THEMES.CLAUDIA ? 'bg-white border-pink-300 text-pink-700' : 'bg-slate-700 border-slate-600';
+    const buttonSecondaryClass = theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-200 hover:bg-pink-300 text-pink-800' : 'bg-slate-600 hover:bg-slate-500 text-white';
+    const addCardButtonClass = theme === THEMES.MINIMALIST ? 'bg-green-200 hover:bg-green-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-green-400 hover:bg-green-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white';
 
 
     useEffect(() => {
@@ -1116,7 +1122,7 @@ function ManageCardsView({ userId, deckId, deckName, exitManageView, navigateToT
             </div>
 
             {message.text && (
-                <div className={`my-2 p-2 rounded-md text-xs sm:text-sm ${message.type === 'success' ? (theme === THEMES.MINIMALIST ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-green-700 text-green-100') : (theme === THEMES.MINIMALIST ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-red-700 text-red-100')}`}>
+                <div className={`my-2 p-2 rounded-md text-xs sm:text-sm ${message.type === 'success' ? (theme === THEMES.MINIMALIST ? 'bg-green-100 text-green-700 border border-green-300' : theme === THEMES.CLAUDIA ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-green-700 text-green-100') : (theme === THEMES.MINIMALIST ? 'bg-red-100 text-red-700 border border-red-300' : theme === THEMES.CLAUDIA ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-red-700 text-red-100')}`}>
                     {message.text}
                 </div>
             )}
@@ -1137,12 +1143,12 @@ function ManageCardsView({ userId, deckId, deckName, exitManageView, navigateToT
                                         onChange={(e) => handleCardInputChange(e, 'front')}
                                         onBlur={() => handleCardInputBlur(card.id, 'front')}
                                         onKeyDown={(e) => handleCardInputKeyDown(e, card.id, 'front')}
-                                        className={`w-full p-1 mt-0.5 text-sm ${inputBgClass} ${textClass} rounded focus:ring-1 focus:ring-sky-500 min-h-[3em]`}
+                                        className={`w-full p-1 mt-0.5 text-sm ${inputBgClass} ${textClass} rounded focus:ring-1 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'} min-h-[3em]`}
                                         rows="2"
                                         autoFocus
                                     />
                                 ) : (
-                                    <p onClick={() => handleCardFieldClick(card, 'front')} className={`${textClass} break-words cursor-pointer hover:bg-opacity-10 p-1 min-h-[2em] ${theme === THEMES.MINIMALIST ? 'hover:bg-gray-200' : 'hover:bg-slate-600'}`}>{card.front}</p>
+                                    <p onClick={() => handleCardFieldClick(card, 'front')} className={`${textClass} break-words cursor-pointer hover:bg-opacity-10 p-1 min-h-[2em] ${theme === THEMES.MINIMALIST ? 'hover:bg-gray-200' : theme === THEMES.CLAUDIA ? 'hover:bg-pink-100' : 'hover:bg-slate-600'}`}>{card.front}</p>
                                 )}
                             </div>
                             <div className="w-full mt-2 md:mt-0">
@@ -1153,18 +1159,18 @@ function ManageCardsView({ userId, deckId, deckName, exitManageView, navigateToT
                                         onChange={(e) => handleCardInputChange(e, 'back')}
                                         onBlur={() => handleCardInputBlur(card.id, 'back')}
                                         onKeyDown={(e) => handleCardInputKeyDown(e, card.id, 'back')}
-                                        className={`w-full p-1 mt-0.5 text-sm ${inputBgClass} ${textClass} rounded focus:ring-1 focus:ring-sky-500 min-h-[3em]`}
+                                        className={`w-full p-1 mt-0.5 text-sm ${inputBgClass} ${textClass} rounded focus:ring-1 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'} min-h-[3em]`}
                                         rows="3"
                                         autoFocus
                                     />
                                 ) : (
-                                    <p onClick={() => handleCardFieldClick(card, 'back')} className={`${textClass} break-words cursor-pointer hover:bg-opacity-10 p-1 min-h-[2em] ${theme === THEMES.MINIMALIST ? 'hover:bg-gray-200' : 'hover:bg-slate-600'}`}>{card.back}</p>
+                                    <p onClick={() => handleCardFieldClick(card, 'back')} className={`${textClass} break-words cursor-pointer hover:bg-opacity-10 p-1 min-h-[2em] ${theme === THEMES.MINIMALIST ? 'hover:bg-gray-200' : theme === THEMES.CLAUDIA ? 'hover:bg-pink-100' : 'hover:bg-slate-600'}`}>{card.back}</p>
                                 )}
                             </div>
                         </div>
                         <button 
                             onClick={() => handleDeleteCard(card.id)} 
-                            className={`ml-2 p-1.5 self-center rounded-md ${theme === THEMES.MINIMALIST ? 'text-red-500 hover:bg-red-100' : 'text-red-400 hover:bg-red-700 hover:text-red-200'}`}
+                            className={`ml-2 p-1.5 self-center rounded-md ${theme === THEMES.MINIMALIST ? 'text-red-500 hover:bg-red-100' : theme === THEMES.CLAUDIA ? 'text-red-400 hover:bg-red-100' : 'text-red-400 hover:bg-red-700 hover:text-red-200'}`}
                             title="Delete Card"
                         >
                             <X size={18}/>
@@ -1187,23 +1193,31 @@ function AddCard({ userId, selectedDeckId, decks, setActiveTab, setSelectedDeckI
     const [message, setMessage] = useState('');
     const cardsCollectionPath = `artifacts/${appId}/users/${userId}/vocabCards`;
 
-    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
-    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
-    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-sky-400';
-    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-600' : theme === THEMES.MINIMALIST ? 'text-gray-700' : 'text-slate-300';
-    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300 text-gray-800' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400 text-black' : 'bg-slate-700 border-slate-600 text-slate-100';
-    const selectBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300 text-gray-800' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400 text-black' : 'bg-slate-700 border-slate-600 text-slate-100';
-    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : 'bg-sky-600 hover:bg-sky-500 text-white';
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-50 border-pink-200' : 'bg-slate-800';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-700' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-500' : 'text-sky-400';
+    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-600' : theme === THEMES.MINIMALIST ? 'text-gray-700' : theme === THEMES.CLAUDIA ? 'text-pink-600' : 'text-slate-300';
+    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300 text-gray-800' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400 text-black' : theme === THEMES.CLAUDIA ? 'bg-white border-pink-300 text-pink-700 placeholder-pink-300' : 'bg-slate-700 border-slate-600 text-slate-100';
+    const selectBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300 text-gray-800' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400 text-black' : theme === THEMES.CLAUDIA ? 'bg-white border-pink-300 text-pink-700' : 'bg-slate-700 border-slate-600 text-slate-100';
+    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-sky-600 hover:bg-sky-500 text-white';
 
 
     useEffect(() => {
-        setCurrentSelectedDeckId(selectedDeckId); 
-    }, [selectedDeckId]);
+        // If no deck is selected but decks are available, select the first one.
+        if (!selectedDeckId && decks && decks.length > 0) {
+            setCurrentSelectedDeckId(decks[0].id);
+            if (setSelectedDeckId && typeof setSelectedDeckId === 'function') {
+                setSelectedDeckId(decks[0].id);
+            }
+        } else {
+            setCurrentSelectedDeckId(selectedDeckId); 
+        }
+    }, [selectedDeckId, decks, setSelectedDeckId]);
     
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!currentSelectedDeckId) {
-            setMessage({ type: 'error', text: 'Please select a deck.'});
+            setMessage({ type: 'error', text: 'Please select a deck. If none exist, please create one first.'});
             return;
         }
         if (!front.trim() || !back.trim()) {
@@ -1246,8 +1260,8 @@ function AddCard({ userId, selectedDeckId, decks, setActiveTab, setSelectedDeckI
     if (decks.length === 0 && !isLoadingDecks) { 
         return (
             <div className={`text-center p-8 ${cardBgClass} rounded-lg shadow-xl`}>
-                <p className={`text-xl ${theme === THEMES.MINIMALIST ? 'text-amber-700' : 'text-amber-400'}`}>You need to create a deck first.</p>
-                <button onClick={() => {setSelectedDeckId(null); setActiveTab('decks')}} className={`mt-4 px-4 py-2 ${buttonPrimaryClass} rounded-lg`}>Go to Decks</button>
+                <p className={`text-xl ${theme === THEMES.MINIMALIST ? 'text-amber-700' : theme === THEMES.CLAUDIA ? 'text-purple-600' : 'text-amber-400'}`}>You need to create a deck first to add cards.</p>
+                <button onClick={() => {setActiveTab('decks')}} className={`mt-4 px-4 py-2 ${buttonPrimaryClass} rounded-lg`}>Go to Decks</button>
             </div>
         );
     }
@@ -1256,7 +1270,7 @@ function AddCard({ userId, selectedDeckId, decks, setActiveTab, setSelectedDeckI
     return (
         <div className={`${cardBgClass} p-6 sm:p-8 rounded-xl shadow-2xl`}>
             <h2 className={`text-2xl font-semibold mb-6 ${headerTextClass} flex items-center`}>
-                <PlusCircle className={`mr-3 ${headerTextClass}`} size={28} /> Add Card to Deck: <em className={`ml-2 ${theme === THEMES.MINIMALIST ? 'text-sky-700' : 'text-sky-300'}`}>{decks.find(d => d.id === currentSelectedDeckId)?.name || "Select Deck"}</em>
+                <PlusCircle className={`mr-3 ${headerTextClass}`} size={28} /> Add Card to Deck: <em className={`ml-2 ${theme === THEMES.MINIMALIST ? 'text-sky-700' : theme === THEMES.CLAUDIA ? 'text-pink-500' : 'text-sky-300'}`}>{decks.find(d => d.id === currentSelectedDeckId)?.name || "Select Deck"}</em>
             </h2>
              <div className="mb-4">
                 <label htmlFor="deck-select" className={`block text-sm font-medium ${subTextClass} mb-1`}>Deck</label>
@@ -1270,7 +1284,7 @@ function AddCard({ userId, selectedDeckId, decks, setActiveTab, setSelectedDeckI
                             setSelectedDeckId(newDeckId); 
                         }
                     }}
-                    className={`w-full p-3 ${selectBgClass} rounded-lg focus:ring-2 focus:ring-sky-500`}
+                    className={`w-full p-3 ${selectBgClass} rounded-lg focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'}`}
                     disabled={decks.length === 0 || isLoading || isLoadingDecks}
                 >
                     <option value="" disabled={!!currentSelectedDeckId}>-- Select a Deck --</option>
@@ -1282,18 +1296,18 @@ function AddCard({ userId, selectedDeckId, decks, setActiveTab, setSelectedDeckI
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                     <label htmlFor="front" className={`block text-sm font-medium ${subTextClass} mb-1`}>Front (Word/Phrase)</label>
-                    <input type="text" id="front" value={front} onChange={(e) => setFront(e.target.value)} placeholder="e.g., Serendipity" className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 focus:ring-sky-500`} disabled={isLoading || !currentSelectedDeckId} />
+                    <input type="text" id="front" value={front} onChange={(e) => setFront(e.target.value)} placeholder="e.g., Serendipity" className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'}`} disabled={isLoading || !currentSelectedDeckId} />
                 </div>
                 <div>
                     <label htmlFor="back" className={`block text-sm font-medium ${subTextClass} mb-1`}>Back (Definition/Translation)</label>
-                    <textarea id="back" value={back} onChange={(e) => setBack(e.target.value)} placeholder="e.g., The occurrence and development of events by chance in a happy or beneficial way." rows="4" className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 focus:ring-sky-500`} disabled={isLoading || !currentSelectedDeckId}></textarea>
+                    <textarea id="back" value={back} onChange={(e) => setBack(e.target.value)} placeholder="e.g., The occurrence and development of events by chance in a happy or beneficial way." rows="4" className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 ${theme === THEMES.CLAUDIA ? 'focus:ring-pink-400' : 'focus:ring-sky-500'}`} disabled={isLoading || !currentSelectedDeckId}></textarea>
                 </div>
                 <button type="submit" disabled={isLoading || !currentSelectedDeckId} className={`w-full flex items-center justify-center p-3 ${buttonPrimaryClass} font-semibold rounded-lg shadow-md disabled:opacity-50`}>
                     {isLoading ? 'Adding...' : <><PlusCircle size={20} className="mr-2" /> Add Card</>}
                 </button>
             </form>
             {message.text && (
-                <div className={`mt-4 p-3 rounded-md text-sm ${message.type === 'success' ? (theme === THEMES.MINIMALIST ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-green-700 text-green-100') : (theme === THEMES.MINIMALIST ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-red-700 text-red-100')}`}>
+                <div className={`mt-4 p-3 rounded-md text-sm ${message.type === 'success' ? (theme === THEMES.MINIMALIST ? 'bg-green-100 text-green-700 border border-green-300' : theme === THEMES.CLAUDIA ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-green-700 text-green-100') : (theme === THEMES.MINIMALIST ? 'bg-red-100 text-red-700 border border-red-300' : theme === THEMES.CLAUDIA ? 'bg-red-100 text-red-700 border border-red-300' :'bg-red-700 text-red-100')}`}>
                     {message.text}
                 </div>
             )}
@@ -1310,18 +1324,18 @@ function Learner({ userId, selectedDeckId }) {
     const [message, setMessage] = useState('');
     const cardsCollectionPath = `artifacts/${appId}/users/${userId}/vocabCards`;
 
-    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
-    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
-    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-sky-400';
-    const cardContentBgClass = theme === THEMES.LIGHT ? 'bg-gray-100' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : 'bg-slate-700';
-    const cardFrontTextClass = theme === THEMES.LIGHT ? 'text-sky-700' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-sky-300';
-    const cardBackTextClass = theme === THEMES.LIGHT ? 'text-gray-700' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-200';
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-50 border-pink-200' : 'bg-slate-800';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-800' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-500' : 'text-sky-400';
+    const cardContentBgClass = theme === THEMES.LIGHT ? 'bg-gray-100' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : theme === THEMES.CLAUDIA ? 'bg-pink-100 border-pink-200' : 'bg-slate-700';
+    const cardFrontTextClass = theme === THEMES.LIGHT ? 'text-sky-700' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-700' : 'text-sky-300';
+    const cardBackTextClass = theme === THEMES.LIGHT ? 'text-gray-700' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-600' : 'text-slate-200';
     const buttonBase = `p-3 rounded-lg shadow-md font-medium transition-colors`;
-    const buttonAgain = theme === THEMES.MINIMALIST ? `bg-red-200 hover:bg-red-300 text-black` : `bg-red-600 hover:bg-red-500 text-white`;
-    const buttonHard = theme === THEMES.MINIMALIST ? `bg-orange-200 hover:bg-orange-300 text-black` : `bg-orange-500 hover:bg-orange-400 text-white`;
-    const buttonGood = theme === THEMES.MINIMALIST ? `bg-green-200 hover:bg-green-300 text-black` : `bg-green-600 hover:bg-green-500 text-white`;
-    const buttonEasy = theme === THEMES.MINIMALIST ? `bg-sky-200 hover:bg-sky-300 text-black` : `bg-sky-500 hover:bg-sky-400 text-white`;
-    const showAnswerButton = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : 'bg-sky-600 hover:bg-sky-500 text-white';
+    const buttonAgain = theme === THEMES.MINIMALIST ? `bg-red-200 hover:bg-red-300 text-black` : theme === THEMES.CLAUDIA ? `bg-red-300 hover:bg-red-400 text-white` : `bg-red-600 hover:bg-red-500 text-white`;
+    const buttonHard = theme === THEMES.MINIMALIST ? `bg-orange-200 hover:bg-orange-300 text-black` : theme === THEMES.CLAUDIA ? `bg-orange-300 hover:bg-orange-400 text-gray-800` : `bg-orange-500 hover:bg-orange-400 text-white`;
+    const buttonGood = theme === THEMES.MINIMALIST ? `bg-green-200 hover:bg-green-300 text-black` : theme === THEMES.CLAUDIA ? `bg-green-400 hover:bg-green-500 text-white` : `bg-green-600 hover:bg-green-500 text-white`;
+    const buttonEasy = theme === THEMES.MINIMALIST ? `bg-sky-200 hover:bg-sky-300 text-black` : theme === THEMES.CLAUDIA ? `bg-sky-300 hover:bg-sky-400 text-white` : `bg-sky-500 hover:bg-sky-400 text-white`;
+    const showAnswerButton = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-400 hover:bg-pink-500 text-white' : 'bg-sky-600 hover:bg-sky-500 text-white';
 
 
     const fetchNextCard = useCallback(async () => {
@@ -1510,15 +1524,15 @@ function PracticeReviewer({ userId, selectedDeckId, deckName, exitPracticeMode }
     const [message, setMessage] = useState('');
     const cardsCollectionPath = `artifacts/${appId}/users/${userId}/vocabCards`;
 
-    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
-    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
-    const headerTextClass = theme === THEMES.LIGHT ? 'text-amber-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-amber-400';
-    const cardContentBgClass = theme === THEMES.LIGHT ? 'bg-gray-100' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : 'bg-slate-700';
-    const cardFrontTextClass = theme === THEMES.LIGHT ? 'text-sky-700' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-sky-300';
-    const cardBackTextClass = theme === THEMES.LIGHT ? 'text-gray-700' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-200';
-    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : 'bg-sky-600 hover:bg-sky-500 text-white';
-    const buttonSuccessClass = theme === THEMES.MINIMALIST ? 'bg-green-200 hover:bg-green-300 text-black' : 'bg-green-600 hover:bg-green-500 text-white';
-    const buttonSecondaryClass = theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : 'bg-slate-600 hover:bg-slate-500 text-white';
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-50 border-pink-200' : 'bg-slate-800';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-800' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-amber-600' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-purple-500' : 'text-amber-400';
+    const cardContentBgClass = theme === THEMES.LIGHT ? 'bg-gray-100' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : theme === THEMES.CLAUDIA ? 'bg-pink-100 border-pink-200' : 'bg-slate-700';
+    const cardFrontTextClass = theme === THEMES.LIGHT ? 'text-sky-700' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-700' : 'text-sky-300';
+    const cardBackTextClass = theme === THEMES.LIGHT ? 'text-gray-700' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-600' : 'text-slate-200';
+    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-400 hover:bg-pink-500 text-white' : 'bg-sky-600 hover:bg-sky-500 text-white';
+    const buttonSuccessClass = theme === THEMES.MINIMALIST ? 'bg-green-200 hover:bg-green-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-green-400 hover:bg-green-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white';
+    const buttonSecondaryClass = theme === THEMES.MINIMALIST ? 'bg-gray-200 hover:bg-gray-300 text-black' : theme === THEMES.CLAUDIA ? 'bg-pink-200 hover:bg-pink-300 text-pink-800' : 'bg-slate-600 hover:bg-slate-500 text-white';
 
 
     useEffect(() => {
@@ -1590,7 +1604,7 @@ function PracticeReviewer({ userId, selectedDeckId, deckName, exitPracticeMode }
         <div className={`${cardBgClass} p-6 sm:p-8 rounded-xl shadow-2xl w-full`}>
              <div className="flex justify-between items-center mb-4">
                 <h3 className={`text-xl font-semibold ${headerTextClass}`}>Practice: {deckName}</h3>
-                <span className={`text-sm ${theme === THEMES.MINIMALIST ? 'text-gray-600' : 'text-slate-400'}`}>Card {currentIndex + 1} of {cards.length}</span>
+                <span className={`text-sm ${theme === THEMES.MINIMALIST ? 'text-gray-600' : theme === THEMES.CLAUDIA ? 'text-pink-500' : 'text-slate-400'}`}>Card {currentIndex + 1} of {cards.length}</span>
             </div>
             <div className={`min-h-[200px] sm:min-h-[250px] flex flex-col justify-center items-center ${cardContentBgClass} p-6 rounded-lg mb-6 shadow-inner`}>
                 <p className={`text-2xl sm:text-3xl font-bold text-center ${cardFrontTextClass} break-all`}>{currentCard.front}</p>
@@ -1622,17 +1636,17 @@ function Stats({ userId, selectedDeckId }) {
     const [isLoading, setIsLoading] = useState(true);
     const cardsCollectionPath = `artifacts/${appId}/users/${userId}/vocabCards`;
 
-    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
-    const itemBgClass = theme === THEMES.LIGHT ? 'bg-gray-100' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : 'bg-slate-700';
-    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
-    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-sky-400';
-    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-600' : theme === THEMES.MINIMALIST ? 'text-gray-700' : 'text-slate-300';
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-50 border-pink-200' : 'bg-slate-800';
+    const itemBgClass = theme === THEMES.LIGHT ? 'bg-gray-100' : theme === THEMES.MINIMALIST ? 'bg-white border border-gray-200' : theme === THEMES.CLAUDIA ? 'bg-pink-100 border-pink-200' : 'bg-slate-700';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-800' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : theme === THEMES.CLAUDIA ? 'text-pink-500' : 'text-sky-400';
+    const subTextClass = theme === THEMES.LIGHT ? 'text-gray-600' : theme === THEMES.MINIMALIST ? 'text-gray-700' : theme === THEMES.CLAUDIA ? 'text-pink-600' : 'text-slate-300';
     const statValueClasses = {
-        total: theme === THEMES.MINIMALIST ? 'text-sky-700' : 'text-sky-400',
-        new: theme === THEMES.MINIMALIST ? 'text-green-700' : 'text-green-400',
-        learning: theme === THEMES.MINIMALIST ? 'text-yellow-600' : 'text-yellow-400',
-        review: theme === THEMES.MINIMALIST ? 'text-blue-700' : 'text-blue-400',
-        lapsed: theme === THEMES.MINIMALIST ? 'text-red-700' : 'text-red-400',
+        total: theme === THEMES.MINIMALIST ? 'text-sky-700' : theme === THEMES.CLAUDIA ? 'text-pink-600' : 'text-sky-400',
+        new: theme === THEMES.MINIMALIST ? 'text-green-700' : theme === THEMES.CLAUDIA ? 'text-green-500' :'text-green-400',
+        learning: theme === THEMES.MINIMALIST ? 'text-yellow-600' : theme === THEMES.CLAUDIA ? 'text-yellow-500' : 'text-yellow-400',
+        review: theme === THEMES.MINIMALIST ? 'text-blue-700' : theme === THEMES.CLAUDIA ? 'text-blue-500' : 'text-blue-400',
+        lapsed: theme === THEMES.MINIMALIST ? 'text-red-700' : theme === THEMES.CLAUDIA ? 'text-red-500' : 'text-red-400',
     };
 
 
@@ -1676,7 +1690,7 @@ function Stats({ userId, selectedDeckId }) {
         return <div className={`flex flex-col items-center justify-center p-10 ${cardBgClass} rounded-xl shadow-2xl min-h-[200px]`}><BarChart3 className={`animate-pulse w-12 h-12 ${headerTextClass} mb-4`} /><p className={`${textClass} text-lg`}>Loading stats...</p></div>;
     }
      if (!selectedDeckId && !isLoading) { 
-        return <div className={`text-center p-8 ${cardBgClass} rounded-lg shadow-xl`}><p className={`text-xl ${theme === THEMES.MINIMALIST ? 'text-amber-700' : 'text-amber-400'}`}>Please select a deck from the 'Decks' tab to view stats.</p></div>;
+        return <div className={`text-center p-8 ${cardBgClass} rounded-lg shadow-xl`}><p className={`text-xl ${theme === THEMES.MINIMALIST ? 'text-amber-700' : theme === THEMES.CLAUDIA ? 'text-purple-600' : 'text-amber-400'}`}>Please select a deck from the 'Decks' tab to view stats.</p></div>;
     }
 
     return (
