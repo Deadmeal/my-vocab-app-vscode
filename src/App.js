@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react'; // Removed unused useRef
 import { initializeApp } from 'firebase/app';
 import { 
     getAuth, 
@@ -7,8 +7,8 @@ import {
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword 
 } from 'firebase/auth';
-import { getFirestore, doc, addDoc, getDocs, updateDoc, collection, query, where, Timestamp, serverTimestamp, orderBy, limit, writeBatch, deleteDoc, runTransaction, onSnapshot } from 'firebase/firestore';
-import { PlusCircle, BookOpen, BarChart3, LogOut, Brain, Trash2, Edit3, Layers, Shuffle, Printer, Sun, Moon, Type, Sparkles, Loader2, ListChecks, X, Check, Minus, Plus, UserPlus, LogIn, Heart } from 'lucide-react';
+import { getFirestore, doc, addDoc, getDocs, updateDoc, collection, query, where, Timestamp, serverTimestamp, orderBy, writeBatch, deleteDoc, runTransaction, onSnapshot } from 'firebase/firestore'; // Removed unused limit
+import { PlusCircle, BookOpen, BarChart3, LogOut, Brain, Trash2, Layers, Shuffle, Printer, Sun, Moon, Type, Sparkles, Loader2, ListChecks, X, UserPlus, LogIn, Heart } from 'lucide-react'; // Removed unused Edit3, Check, Minus, Plus
 
 // --- Theme Context ---
 const ThemeContext = createContext();
@@ -16,7 +16,7 @@ const THEMES = {
     DARK: 'dark',
     LIGHT: 'light',
     MINIMALIST: 'minimalist',
-    CLAUDIA: 'claudia', // New Theme
+    CLAUDIA: 'claudia', 
 };
 
 const ThemeProvider = ({ children }) => {
@@ -44,8 +44,6 @@ const ThemeProvider = ({ children }) => {
 const useTheme = () => useContext(ThemeContext);
 
 // --- Firebase Configuration ---
-// This configuration is used directly. For Netlify deployment,
-// you would typically use environment variables like process.env.REACT_APP_FIREBASE_API_KEY
 const firebaseConfig = {
   apiKey: "AIzaSyCf_c6Z4uAPkYx3cXt9XZk-3-xWN3rtvyY",
   authDomain: "tongulos.firebaseapp.com",
@@ -57,7 +55,7 @@ const firebaseConfig = {
 };
 
 // --- App ID ---
-const appId = 'tongulo-app-default'; // Renamed for consistency
+const appId = 'tongulo-app-default'; 
 
 // --- Initialize Firebase ---
 let firebaseApp;
@@ -124,12 +122,14 @@ function AuthPage() {
                 return;
             }
             try {
+                // const userCredential = await createUserWithEmailAndPassword(auth, email, password); // Not using userCredential directly
                 await createUserWithEmailAndPassword(auth, email, password);
             } catch (err) {
                 setError(getFriendlyErrorMessage(err));
             }
         } else { 
             try {
+                // const userCredential = await signInWithEmailAndPassword(auth, email, password); // Not using userCredential directly
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (err) {
                 setError(getFriendlyErrorMessage(err));
@@ -191,7 +191,7 @@ function AuthPage() {
 }
 
 
-// --- Main App Component ---
+// --- Main App Component (Internal, used by AppWrapper) ---
 function App() {
     const { theme, setTheme } = useTheme();
     const [user, setUser] = useState(null);
@@ -270,7 +270,6 @@ function App() {
     const navBgClass = theme === THEMES.LIGHT ? 'bg-gray-200' : theme === THEMES.MINIMALIST ? 'bg-gray-100 border border-gray-300' : theme === THEMES.CLAUDIA ? 'bg-pink-100 border border-pink-200' : 'bg-slate-800';
     const buttonHoverBgClass = theme === THEMES.MINIMALIST ? 'hover:bg-gray-200' : theme === THEMES.CLAUDIA ? 'hover:bg-pink-200' : 'hover:bg-sky-700';
     const themeButtonActiveClass = theme === THEMES.CLAUDIA ? 'bg-pink-400' : 'bg-sky-500';
-    const themeButtonTextClass = theme === THEMES.CLAUDIA ? 'text-pink-700 hover:bg-pink-200' : 'text-slate-300 hover:bg-slate-700';
 
 
     if (!isAuthReady) { 
@@ -354,7 +353,7 @@ function App() {
                         <button
                             key={tab}
                             onClick={() => navigateToTab(tab, (tab !== 'decks' && selectedDeckId) ? selectedDeckId : null)}
-                            disabled={(tab === 'learn' || tab === 'add' || tab === 'stats') && !selectedDeckId && !managingCardsDeckId && decks.length === 0 && !isLoadingDecks} // Allow add even if no deck selected
+                            disabled={(tab === 'learn' || tab === 'add' || tab === 'stats') && !selectedDeckId && !managingCardsDeckId && decks.length === 0 && !isLoadingDecks} 
                             className={`flex-1 py-2 px-2 sm:px-4 rounded-md text-xs sm:text-base font-medium transition-all duration-200 ease-in-out
                                 ${activeTab === tab && !practiceModeActive && !managingCardsDeckId ? 
                                     (theme === THEMES.MINIMALIST ? 'bg-sky-300 text-black shadow-lg' : theme === THEMES.CLAUDIA ? 'bg-pink-400 text-white shadow-lg' : 'bg-sky-600 text-white shadow-lg') : 
@@ -405,6 +404,11 @@ function App() {
     );
 }
 
+
+// ... (Rest of the components: DecksManager, GenerateDeckModal, ManageCardsView, AddCard, Learner, PracticeReviewer, Stats)
+// These components remain largely the same as in the previous version,
+// with theme-specific class adjustments already incorporated.
+// The key changes for this request were in the App component's auth handling and UI elements.
 
 // --- DecksManager Component ---
 function DecksManager({ userId, decks, setSelectedDeckId, navigateToTab, startPracticeMode, startManagingCards, isLoadingDecks }) {
@@ -990,7 +994,7 @@ function ManageCardsView({ userId, deckId, deckName, exitManageView, navigateToT
     const [editingCardId, setEditingCardId] = useState(null);
     const [cardFrontInput, setCardFrontInput] = useState('');
     const [cardBackInput, setCardBackInput] = useState('');
-    const [isSubmittingCard, setIsSubmittingCard] = useState(false);
+    // const [isSubmittingCard, setIsSubmittingCard] = useState(false); // Removed as it wasn't used for individual saves
     const [message, setMessage] = useState('');
 
     const cardsCollectionPath = `artifacts/${appId}/users/${userId}/vocabCards`;
@@ -1053,8 +1057,7 @@ function ManageCardsView({ userId, deckId, deckName, exitManageView, navigateToT
             newContent = cardToUpdate.back; 
         }
 
-
-        setIsSubmittingCard(true);
+        // setIsSubmittingCard(true); // Not strictly needed for inline saves if UI feedback is minimal
         setMessage('');
         try {
             const cardRef = doc(db, cardsCollectionPath, cardId);
@@ -1067,7 +1070,7 @@ function ManageCardsView({ userId, deckId, deckName, exitManageView, navigateToT
             console.error(`Error updating card ${field}:`, error);
             setMessage({ type: 'error', text: `Failed to update card ${field}.` });
         } finally {
-            setIsSubmittingCard(false);
+            // setIsSubmittingCard(false);
         }
     };
 
@@ -1091,7 +1094,7 @@ function ManageCardsView({ userId, deckId, deckName, exitManageView, navigateToT
 
 
     const handleDeleteCard = async (cardId) => {
-        setIsSubmittingCard(true); 
+        // setIsSubmittingCard(true); // Not using a global submit state for individual deletes
         try {
             await deleteDoc(doc(db, cardsCollectionPath, cardId));
         } catch (error) {
@@ -1099,7 +1102,7 @@ function ManageCardsView({ userId, deckId, deckName, exitManageView, navigateToT
             setMessage({ type: 'error', text: 'Failed to delete card.' });
             setTimeout(() => setMessage(''), 3000);
         } finally {
-            setIsSubmittingCard(false);
+            // setIsSubmittingCard(false);
         }
     };
     
@@ -1203,7 +1206,6 @@ function AddCard({ userId, selectedDeckId, decks, setActiveTab, setSelectedDeckI
 
 
     useEffect(() => {
-        // If no deck is selected but decks are available, select the first one.
         if (!selectedDeckId && decks && decks.length > 0) {
             setCurrentSelectedDeckId(decks[0].id);
             if (setSelectedDeckId && typeof setSelectedDeckId === 'function') {
@@ -1710,5 +1712,3 @@ function Stats({ userId, selectedDeckId }) {
 }
 
 export default AppWrapper;
-
-
