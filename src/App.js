@@ -1711,4 +1711,13 @@ function Stats({ userId, selectedDeckId }) {
     );
 }
 
+
+function AppWrapper() {
+  return (
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
+  );
+}
+
 export default AppWrapper;
