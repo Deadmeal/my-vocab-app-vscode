@@ -1710,5 +1710,3 @@ function Stats({ userId, selectedDeckId }) {
 }
 
 export default AppWrapper;
-
-
