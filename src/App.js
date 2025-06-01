@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from 'firebase/auth';
+import { 
+    getAuth, 
+    onAuthStateChanged, 
+    signOut, 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword 
+} from 'firebase/auth'; // Updated imports
 import { getFirestore, doc, addDoc, getDocs, updateDoc, collection, query, where, Timestamp, serverTimestamp, orderBy, limit, writeBatch, deleteDoc, runTransaction, onSnapshot } from 'firebase/firestore';
-import { PlusCircle, BookOpen, BarChart3, LogOut, Brain, Trash2, Edit3, Layers, Shuffle, Printer, Sun, Moon, Type, Sparkles, Loader2, ListChecks, X, Check, Minus, Plus } from 'lucide-react';
+import { PlusCircle, BookOpen, BarChart3, LogOut, Brain, Trash2, Edit3, Layers, Shuffle, Printer, Sun, Moon, Type, Sparkles, Loader2, ListChecks, X, Check, Minus, Plus, UserPlus, LogIn } from 'lucide-react'; // Added UserPlus, LogIn
 
 // --- Theme Context ---
 const ThemeContext = createContext();
@@ -39,19 +45,18 @@ const ThemeProvider = ({ children }) => {
 const useTheme = () => useContext(ThemeContext);
 
 // --- Firebase Configuration ---
-// Adjusted to use Netlify environment variables (prefixed with REACT_APP_)
-const firebaseConfig = {
-    apiKey: "AIzaSyCf_c6Z4uAPkYx3cXt9XZk-3-xWN3rtvyY",
-    authDomain: "tongulos.firebaseapp.com",
-    projectId: "tongulos",
-    storageBucket: "tongulos.firebasestorage.app",
-    messagingSenderId: "334130543480",
-    appId: "1:334130543480:web:a60e06c125ea396494a68d",
-    measurementId: "G-E55HFTTZ5Z"
+const firebaseConfig = { // Make sure this is YOUR actual Firebase config
+  apiKey: "AIzaSyCf_c6Z4uAPkYx3cXt9XZk-3-xWN3rtvyY",
+  authDomain: "tongulos.firebaseapp.com",
+  projectId: "tongulos",
+  storageBucket: "tongulos.firebasestorage.app",
+  messagingSenderId: "334130543480",
+  appId: "1:334130543480:web:a60e06c125ea396494a68d",
+  measurementId: "G-E55HFTTZ5Z"
 };
 
-// --- App ID (if needed for something else, otherwise can be removed if only for Firebase paths) ---
-const appId = process.env.REACT_APP_MY_APP_ID || 'anki-vocab-app-default'; // Example if you need a separate app ID
+// --- App ID ---
+const appId = 'anki-vocab-app-default'; // You can customize this if needed
 
 // --- Initialize Firebase ---
 const firebaseApp = initializeApp(firebaseConfig);
@@ -79,20 +84,112 @@ const CardStatus = {
     LAPSED: 'LAPSED',
 };
 
-// --- Main App Component ---
-function AppWrapper() { 
+// --- Auth Page Component ---
+function AuthPage({ setCurrentUser, setUserIdToUse }) {
+    const { theme } = useTheme();
+    const [isSignUp, setIsSignUp] = useState(false); // To toggle between Sign In and Sign Up
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const cardBgClass = theme === THEMES.LIGHT ? 'bg-white' : theme === THEMES.MINIMALIST ? 'bg-gray-50 border border-gray-300' : 'bg-slate-800';
+    const textClass = theme === THEMES.LIGHT ? 'text-gray-800' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-slate-100';
+    const headerTextClass = theme === THEMES.LIGHT ? 'text-sky-600' : theme === THEMES.MINIMALIST ? 'text-black' : 'text-sky-400';
+    const inputBgClass = theme === THEMES.LIGHT ? 'bg-gray-100 border-gray-300 text-gray-800' : theme === THEMES.MINIMALIST ? 'bg-white border-gray-400 text-black' : 'bg-slate-700 border-slate-600 text-slate-100';
+    const buttonPrimaryClass = theme === THEMES.MINIMALIST ? 'bg-sky-200 hover:bg-sky-300 text-black' : 'bg-sky-600 hover:bg-sky-500 text-white';
+    const buttonLinkClass = theme === THEMES.MINIMALIST ? 'text-sky-600 hover:text-sky-700' : 'text-sky-400 hover:text-sky-300';
+
+
+    const handleAuthAction = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        if (isSignUp) {
+            if (password !== confirmPassword) {
+                setError("Passwords do not match!");
+                setLoading(false);
+                return;
+            }
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                // User will be set by onAuthStateChanged in App component
+                // console.log("Signed up:", userCredential.user);
+            } catch (err) {
+                setError(err.message);
+            }
+        } else { // Sign In
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                // User will be set by onAuthStateChanged in App component
+                // console.log("Signed in:", userCredential.user);
+            } catch (err) {
+                setError(err.message);
+            }
+        }
+        setLoading(false);
+    };
+    
+    const getFriendlyErrorMessage = (firebaseError) => {
+        if (!firebaseError) return '';
+        switch (firebaseError.code || firebaseError) { // Check error.code if available
+            case 'auth/invalid-email': return 'Please enter a valid email address.';
+            case 'auth/user-not-found': return 'No account found with this email. Please sign up.';
+            case 'auth/wrong-password': return 'Incorrect password. Please try again.';
+            case 'auth/email-already-in-use': return 'This email is already registered. Please sign in or use a different email.';
+            case 'auth/weak-password': return 'Password should be at least 6 characters long.';
+            default: return firebaseError.message || 'An unexpected error occurred. Please try again.';
+        }
+    };
+
+
     return (
-        <ThemeProvider>
-            <App />
-        </ThemeProvider>
+        <div className={`flex items-center justify-center min-h-screen`}>
+            <div className={`${cardBgClass} p-8 rounded-xl shadow-2xl w-full max-w-md`}>
+                <h2 className={`text-3xl font-bold text-center mb-6 ${headerTextClass}`}>
+                    {isSignUp ? 'Create Account' : 'Sign In'}
+                </h2>
+                <form onSubmit={handleAuthAction} className="space-y-6">
+                    <div>
+                        <label htmlFor="email" className={`block text-sm font-medium ${textClass} mb-1`}>Email Address</label>
+                        <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 focus:ring-sky-500`} />
+                    </div>
+                    <div>
+                        <label htmlFor="password" className={`block text-sm font-medium ${textClass} mb-1`}>Password</label>
+                        <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} required className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 focus:ring-sky-500`} />
+                    </div>
+                    {isSignUp && (
+                        <div>
+                            <label htmlFor="confirmPassword" className={`block text-sm font-medium ${textClass} mb-1`}>Confirm Password</label>
+                            <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={`w-full p-3 ${inputBgClass} rounded-lg focus:ring-2 focus:ring-sky-500`} />
+                        </div>
+                    )}
+                    {error && <p className="text-sm text-red-500 text-center">{getFriendlyErrorMessage(error)}</p>}
+                    <button type="submit" disabled={loading} className={`w-full flex items-center justify-center p-3 ${buttonPrimaryClass} font-semibold rounded-lg shadow-md disabled:opacity-70`}>
+                        {loading ? <Loader2 className="animate-spin h-5 w-5 mr-2"/> : (isSignUp ? <UserPlus size={20} className="mr-2"/> : <LogIn size={20} className="mr-2"/>)}
+                        {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+                    </button>
+                </form>
+                <p className={`mt-6 text-center text-sm ${textClass}`}>
+                    {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                    <button onClick={() => { setIsSignUp(!isSignUp); setError(''); }} className={`font-medium ${buttonLinkClass} hover:underline`}>
+                        {isSignUp ? 'Sign In' : 'Sign Up'}
+                    </button>
+                </p>
+            </div>
+        </div>
     );
 }
 
+
+// --- Main App Component ---
 function App() {
     const { theme, setTheme } = useTheme();
     const [user, setUser] = useState(null);
     const [userId, setUserId] = useState(null);
-    const [isAuthReady, setIsAuthReady] = useState(false);
+    const [isAuthReady, setIsAuthReady] = useState(false); // Tracks if onAuthStateChanged has run at least once
     const [activeTab, setActiveTab] = useState('decks'); 
     const [decks, setDecks] = useState([]);
     const [selectedDeckId, setSelectedDeckId] = useState(null);
@@ -130,16 +227,17 @@ function App() {
 
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             if (currentUser) {
                 setUser(currentUser);
                 setUserId(currentUser.uid);
+                console.log("User signed in:", currentUser.uid, currentUser.email);
             } else {
-                // For a real deployment, you might have a proper login flow
-                // For now, anonymous sign-in is the fallback
-                await signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
+                setUser(null);
+                setUserId(null);
+                console.log("User signed out or not logged in.");
             }
-            setIsAuthReady(true);
+            setIsAuthReady(true); // Firebase has checked auth state
         });
         return () => unsubscribe();
     }, []);
@@ -147,14 +245,13 @@ function App() {
     const handleSignOut = async () => {
         try {
             await signOut(auth);
-            setUser(null);
-            setUserId(null);
+            // User state will be cleared by onAuthStateChanged
+            // Reset app state that depends on user
             setDecks([]);
             setSelectedDeckId(null);
             setPracticeModeActive(false);
             setManagingCardsDeckId(null);
             setActiveTab('decks'); 
-            // await signInAnonymously(auth); // Re-evaluate if auto anonymous sign-in after logout is desired
         } catch (error) {
             console.error("Error signing out:", error);
         }
@@ -171,25 +268,23 @@ function App() {
     const buttonHoverBgClass = theme === THEMES.MINIMALIST ? 'hover:bg-gray-200' : 'hover:bg-sky-700';
 
 
-    if (!isAuthReady) {
+    if (!isAuthReady) { // Show a general loading screen while Firebase checks auth state
         return (
             <div className={`flex items-center justify-center min-h-screen ${bgClass} ${textClass}`}>
                 <Brain className={`animate-pulse w-16 h-16 ${headerTextClass}`} />
-                <p className="ml-4 text-xl">Initializing Learning Environment...</p>
+                <p className="ml-4 text-xl">Initializing App...</p>
             </div>
         );
     }
     
-    if (!user || !userId) { // Show a login prompt or loading if user is not yet authenticated
+    if (!user) { // If auth is ready and there's no user, show AuthPage
          return (
-            <div className={`flex items-center justify-center min-h-screen ${bgClass} ${textClass}`}>
-                <p className="text-xl">Loading User...</p> 
-                {/* Or a button to trigger anonymous sign-in if it failed:
-                <button onClick={() => signInAnonymously(auth).catch(err => console.error(err))}>Sign In</button> 
-                */}
+            <div className={`${bgClass} ${textClass}`}> {/* Apply theme to full auth page background */}
+                <AuthPage />
             </div>
-        );
+         );
     }
+
 
     const navigateToTab = (tab, deckId = null) => {
         setPracticeModeActive(false); 
@@ -229,13 +324,13 @@ function App() {
                             <button onClick={() => setTheme(THEMES.DARK)} title="Dark Mode" className={`p-1.5 rounded ${theme === THEMES.DARK ? 'bg-sky-500' : ''} ${theme === THEMES.MINIMALIST ? 'text-black hover:bg-gray-200' : 'text-slate-300 hover:bg-slate-700'}`}> <Moon size={18}/> </button>
                             <button onClick={() => setTheme(THEMES.MINIMALIST)} title="Minimalist Mode" className={`p-1.5 rounded ${theme === THEMES.MINIMALIST ? 'bg-gray-300' : ''} ${theme === THEMES.MINIMALIST ? 'text-black hover:bg-gray-200' : 'text-slate-300 hover:bg-slate-700'}`}> <Type size={18}/> </button>
                         </div>
-                        <span className={`text-xs ${subTextClass} hidden sm:block`}>UID: {userId.slice(0,6)}...</span>
+                        {user && user.email && <span className={`text-xs ${subTextClass} hidden sm:block`}>{user.email}</span>}
                          <button onClick={handleSignOut} title="Sign Out" className={`p-2 rounded-md ${buttonHoverBgClass} transition-colors`}>
                             <LogOut size={20} />
                         </button>
                     </div>
                 </div>
-                <p className={`text-sm ${subTextClass} sm:hidden mt-1`}>UID: {userId.slice(0,10)}...</p>
+                {user && user.email && <p className={`text-sm ${subTextClass} sm:hidden mt-1`}>{user.email}</p>}
                 {selectedDeckId && activeTab !== 'decks' && !practiceModeActive && !managingCardsDeckId && (
                      <p className={`text-sm ${theme === THEMES.MINIMALIST ? 'text-sky-700' : 'text-sky-300'} mt-1`}>Current Deck: {currentDeckName}</p>
                 )}
@@ -277,7 +372,7 @@ function App() {
             </nav>
 
             <main className="w-full max-w-3xl">
-                {isAuthReady && userId && (
+                {isAuthReady && userId && ( // Ensure userId is present before rendering main content
                     <>
                         {activeTab === 'decks' && !practiceModeActive && !managingCardsDeckId && <DecksManager userId={userId} decks={decks} setSelectedDeckId={setSelectedDeckId} navigateToTab={navigateToTab} startPracticeMode={startPracticeMode} startManagingCards={startManagingCards} isLoadingDecks={isLoadingDecks} />}
                         {activeTab === 'add' && selectedDeckId && !practiceModeActive && !managingCardsDeckId && <AddCard userId={userId} selectedDeckId={selectedDeckId} decks={decks} setActiveTab={setActiveTab} setSelectedDeckId={setSelectedDeckId} isLoadingDecks={isLoadingDecks} />}
